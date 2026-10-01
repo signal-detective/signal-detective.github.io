@@ -41,13 +41,13 @@ Territories (AS, GU, MP, PR, VI) are present in the file but have very sparse co
 ## Direct address for code
 
 ```
-https://raw.githubusercontent.com/signal-detective/signal-detective.github.io/main/covid_signals_by_state.csv
+https://signal-detective.github.io/covid_signals_by_state.csv
 ```
 
 ```python
 import pandas as pd
 data = pd.read_csv(
-    "https://raw.githubusercontent.com/signal-detective/signal-detective.github.io/main/covid_signals_by_state.csv",
+    "https://signal-detective.github.io/covid_signals_by_state.csv",
     parse_dates=["date"])
 ```
 
