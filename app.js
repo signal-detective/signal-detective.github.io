@@ -802,6 +802,7 @@ function finishRound(calledDay) {
 }
 
 function wireGame() {
+  el("g-alarm").disabled = true;          // nothing to call until a round is running
   el("g-start").addEventListener("click", startGame);
   el("g-alarm").addEventListener("click", function () {
     if (game.live) finishRound(game.day);
@@ -811,7 +812,7 @@ function wireGame() {
     font: theme().font, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
     xaxis: { visible: false }, yaxis: { visible: false },
     annotations: [{ x: 0.5, y: 0.5, xref: "paper", yref: "paper", showarrow: false,
-      text: "Press Start. Three signals, one day at a time.<br>Call the wave before it arrives.",
+      text: "Press Start. The early signals arrive one day at a time.<br>Call the wave before it does.",
       font: { size: 15, color: css("--text-faint") } }] }, CONFIG);
 }
 

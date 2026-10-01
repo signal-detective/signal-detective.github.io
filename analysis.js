@@ -200,7 +200,7 @@ function countryLeads(byState, wave, earlySignals) {
   return out;
 }
 
-/* The same alarm scored on every state. */
+/* The same alarm scored on all 50 states and DC. */
 function scoreAlarm(byState, wave, chosen, threshold, confirmDays) {
   var leads = [], silent = 0;
   for (var st in STATE_NAMES) {
