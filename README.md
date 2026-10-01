@@ -1,6 +1,6 @@
 # Covid-Data
 
-**Pandemic Signal Detective: [haile-teshome.github.io/Covid-Data](https://haile-teshome.github.io/Covid-Data/)**
+**Pandemic Signal Detective: [signal-detective.github.io](https://signal-detective.github.io/)**
 
 A classroom activity about which kind of data warns us first when a wave of disease
 starts. Four interactive activities and six quiz questions, built on six COVID-19
@@ -41,13 +41,13 @@ Territories (AS, GU, MP, PR, VI) are present in the file but have very sparse co
 ## Direct address for code
 
 ```
-https://raw.githubusercontent.com/haile-teshome/Covid-Data/main/covid_signals_by_state.csv
+https://raw.githubusercontent.com/signal-detective/signal-detective.github.io/main/covid_signals_by_state.csv
 ```
 
 ```python
 import pandas as pd
 data = pd.read_csv(
-    "https://raw.githubusercontent.com/haile-teshome/Covid-Data/main/covid_signals_by_state.csv",
+    "https://raw.githubusercontent.com/signal-detective/signal-detective.github.io/main/covid_signals_by_state.csv",
     parse_dates=["date"])
 ```
 
