@@ -234,18 +234,11 @@
   .meterhead { display: flex; justify-content: space-between; font-size: 14px;
                color: var(--text-soft); font-variant-numeric: tabular-nums;
                margin-bottom: 6px; }
-  .meterhead span:last-child { font-weight: 620; color: var(--text); }
+  .meterhead span:last-child { color: var(--text-faint); }
   .meter { position: relative; height: 10px; background: var(--rule);
            border-radius: 5px; overflow: hidden; }
   .meter i { display: block; height: 100%; width: 0; border-radius: 5px;
-             background: var(--s3); transition: width 0.12s linear, background-color 0.3s ease; }
-  .meter i.warm { background: var(--s4); }
-  .meter i.hot  { background: #c0392b; }
-  .meter .thresh { position: absolute; left: 50%; top: -3px; width: 2px; height: 16px;
-                   background: var(--text-faint); }
-  .meterfoot { display: flex; justify-content: space-between; font-size: 12px;
-               color: var(--text-faint); margin-top: 5px; }
-  .threshlabel { text-align: center; }
+             background: var(--rule-strong); transition: width 0.12s linear; }
 
   .gamectl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
              margin: 16px 0 4px; }
@@ -258,10 +251,6 @@
                  background: #c0392b; color: #fff; letter-spacing: 0.01em; }
   button.alarm:disabled { background: var(--rule); color: var(--text-faint); cursor: not-allowed; }
   button.alarm:not(:disabled):active { transform: translateY(1px); }
-  button.alarm.urgent { animation: throb 1.15s ease-in-out infinite; }
-  @keyframes throb { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.45); }
-                     50% { box-shadow: 0 0 0 9px rgba(192,57,43,0); } }
-  @media (prefers-reduced-motion: reduce) { button.alarm.urgent { animation: none; } }
   button.play.primary { background: var(--accent); color: #fff; border-color: transparent; }
   .gspacer { flex: 1; }
   .rcard { display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: baseline;
@@ -453,13 +442,8 @@
   </div>
 
   <div class="meterwrap" id="g-meter" hidden>
-    <div class="meterhead">
-      <span id="g-day">Day 1</span>
-      <span><b id="g-level">1.00x</b> baseline <span class="chip" id="g-status">quiet</span></span>
-    </div>
-    <div class="meter"><i id="g-meterfill"></i><span class="thresh"></span></div>
-    <div class="meterfoot"><span>1x, where it started</span>
-      <span class="threshlabel">1.5x, the machine fires here</span><span>3x</span></div>
+    <div class="meterhead"><span id="g-day">Day 1</span><span id="g-left"></span></div>
+    <div class="meter"><i id="g-meterfill"></i></div>
   </div>
 
   <div class="gamectl">
@@ -468,9 +452,9 @@
     <div class="gspacer"></div>
     <button type="button" class="play" id="g-pause">Pause</button>
     <select id="g-speed" aria-label="Speed">
-      <option value="110">Slow</option>
-      <option value="60" selected>Normal</option>
-      <option value="28">Fast</option>
+      <option value="230">Slow</option>
+      <option value="130" selected>Normal</option>
+      <option value="65">Fast</option>
     </select>
     <button type="button" class="play" id="g-end" hidden>End run</button>
     <button type="button" class="play primary" id="g-next" hidden>Next outbreak</button>

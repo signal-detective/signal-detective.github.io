@@ -741,7 +741,10 @@ function loadRound() {
   game.surge = surgeIndex(column(game.rows, "cases"));
   game.machine = alarmFor(game.rows, GAME_SIGS, 1.5, 3).alarm;
   game.called = null;
-  game.day = Math.min(14, game.rows.length - 1);
+  /* vary where you join, so the surge never sits at a predictable distance */
+  var runway = 30 + Math.floor(Math.random() * 61);        /* 30 to 90 days of warning */
+  var latest = game.rows.length - 25;
+  game.day = Math.max(0, Math.min(game.surge - runway, latest));
   game.paused = false;
   game.series = {};
   GAME_SIGS.forEach(function (k) { game.series[k] = baselineSeries(game.rows, k); });
@@ -774,32 +777,23 @@ function tickGame() {
   meter();
 }
 
-function currentLevel() {
+function levelAt(day) {
   var sum = 0, n = 0;
   GAME_SIGS.forEach(function (k) {
     var ser = game.series[k];
-    if (ser && ser[game.day] !== null) { sum += ser[game.day]; n++; }
+    if (ser && ser[day] !== null) { sum += ser[day]; n++; }
   });
   return n ? sum / n : null;
 }
 
-/* the live meter doubles as the explanation of what the machine is waiting for */
+/* Deliberately says nothing about the signals. Reporting the level, or pulsing the
+   button once it climbed, handed over the exact judgement the game is asking for.
+   The chart is the only evidence; this is just the clock. */
 function meter() {
-  var lvl = currentLevel();
-  el("g-day").textContent = "Day " + (game.day + 1) + " of " + game.rows.length +
-    ", " + fmtDate(game.rows[game.day].date);
-  el("g-level").textContent = lvl === null ? "no" : lvl.toFixed(2) + "x";
-  var fill = el("g-meterfill"), chip = el("g-status");
-  fill.style.width = (lvl === null ? 0 : Math.min(lvl / 3, 1) * 100) + "%";
-  var state = lvl === null ? "" : lvl >= 2.2 ? "hot" : lvl >= 1.5 ? "warm" : "";
-  fill.className = state;
-  chip.className = "chip " + state;
-  chip.textContent = lvl === null ? "no data"
-    : lvl >= 2.2 ? "climbing hard" : lvl >= 1.5 ? "past the machine's line"
-    : lvl >= 1.2 ? "stirring" : "quiet";
-  var btn = el("g-alarm");
-  if (lvl !== null && lvl >= 1.4 && game.live) btn.classList.add("urgent");
-  else btn.classList.remove("urgent");
+  var left = game.rows.length - 1 - game.day;
+  el("g-day").textContent = "Day " + (game.day + 1) + ", " + fmtDate(game.rows[game.day].date);
+  el("g-left").textContent = plural(left, "day") + " left in this window";
+  el("g-meterfill").style.width = (game.day / (game.rows.length - 1)) * 100 + "%";
 }
 
 function drawGame(reveal) {
@@ -854,7 +848,6 @@ function finishRound(calledDay) {
   clearInterval(game.timer); game.timer = null;
   game.live = false; game.called = calledDay;
   el("g-alarm").disabled = true;
-  el("g-alarm").classList.remove("urgent");
   el("g-pause").disabled = true;
   drawGame(true);
 
@@ -886,8 +879,10 @@ function finishRound(calledDay) {
     if (v === 0) return "same day";
     return plural(-v, "day") + " late";
   }
+  var yourLevel = (calledDay === null) ? null : levelAt(calledDay);
   var bits = [];
-  bits.push("<b>You</b> " + says(calledDay === null ? null : lead));
+  bits.push("<b>You</b> " + says(calledDay === null ? null : lead) +
+            (yourLevel === null ? "" : " at " + yourLevel.toFixed(2) + "x"));
   bits.push("<b>Machine</b> " + says(mLead));
   if (o.beat) bits.push("<b>beat the machine</b> +" + BEAT_BONUS);
   if (o.mult > 1) bits.push("<b>streak</b> x" + o.mult);
