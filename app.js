@@ -629,6 +629,7 @@ var game = null, gamePool = null;
 
 function newGame() {
   return { round: 0, score: 0, machineScore: 0, cred: MAX_CRED, streak: 0, mult: 1,
+           leads: [], beats: 0,
            timer: null, day: 0, rows: [], surge: null, machine: null, called: null,
            series: null, live: false, paused: false, seen: {} };
 }
@@ -682,16 +683,41 @@ function drawPips() {
   }
   el("g-pips").innerHTML = html;
 }
-function setCred(v) { game.cred = Math.max(0, Math.min(MAX_CRED, v)); drawPips(); }
+function setCred(v) { game.cred = Math.max(0, Math.min(MAX_CRED, v)); drawPips(); showCredSub(); }
 function showStreak() {
-  el("g-streak").textContent = game.streak < 2 ? (game.streak ? "1" : "none")
-                             : game.streak + "  x" + game.mult;
+  var n = game.streak;
+  var value = n === 0 ? "none" : n === 1 ? "1 in a row" : "x" + game.mult;
+  var sub = n === 0 ? "3 in a row scores x1.5"
+          : n === 1 ? "one more for x1.25"
+          : n === 2 ? "2 in a row, one more for x1.5"
+          : n + " in a row, the most it goes";
+  el("g-streak").textContent = value;
+  el("g-streak-sub").textContent = sub;
+}
+
+/* the running comparison is the clearest answer to "am I any good at this" */
+function showScore() {
+  el("g-score").textContent = String(game.score);
+  var gap = game.score - game.machineScore;
+  el("g-vs").textContent = game.round === 0 ? "machine 0"
+    : "machine " + game.machineScore + (gap > 0 ? ", you lead by " + gap
+      : gap < 0 ? ", behind by " + (-gap) : ", level");
+  var good = game.leads.filter(function (d) { return d > 0; });
+  if (!good.length) { el("g-avg").innerHTML = "&ndash;"; return; }
+  var avg = good.reduce(function (a, b) { return a + b; }, 0) / good.length;
+  el("g-avg").textContent = plural(+avg.toFixed(0), "day");
+}
+
+function showCredSub() {
+  var left = Math.round(game.cred / (MAX_CRED / PIPS));
+  el("g-cred-sub").textContent = left <= 0 ? "out of credibility"
+    : left === 1 ? "one bad call left" : left + " bad calls left";
 }
 
 function startGame() {
   game = newGame();
-  el("g-score").textContent = "0";
   el("g-round").textContent = "0";
+  showScore();
   showStreak();
   setCred(MAX_CRED);
   el("g-start").hidden = true;
@@ -720,7 +746,8 @@ function loadRound() {
   game.series = {};
   GAME_SIGS.forEach(function (k) { game.series[k] = baselineSeries(game.rows, k); });
   el("g-round").textContent = String(game.round);
-  el("g-place").textContent = STATE_NAMES[r.code] + ", " + r.wave.split(",")[0];
+  el("g-place").textContent = STATE_NAMES[r.code];
+  el("g-wave").textContent = r.wave;
   el("g-result").innerHTML = "";
   el("g-next").hidden = true;
   el("g-alarm").hidden = false;
@@ -761,10 +788,15 @@ function meter() {
   var lvl = currentLevel();
   el("g-day").textContent = "Day " + (game.day + 1) + " of " + game.rows.length +
     ", " + fmtDate(game.rows[game.day].date);
-  el("g-level").textContent = lvl === null ? "no signal" : lvl.toFixed(2) + "x baseline";
-  var fill = el("g-meterfill");
+  el("g-level").textContent = lvl === null ? "no" : lvl.toFixed(2) + "x";
+  var fill = el("g-meterfill"), chip = el("g-status");
   fill.style.width = (lvl === null ? 0 : Math.min(lvl / 3, 1) * 100) + "%";
-  fill.className = lvl === null ? "" : lvl >= 2 ? "hot" : lvl >= 1.5 ? "warm" : "";
+  var state = lvl === null ? "" : lvl >= 2.2 ? "hot" : lvl >= 1.5 ? "warm" : "";
+  fill.className = state;
+  chip.className = "chip " + state;
+  chip.textContent = lvl === null ? "no data"
+    : lvl >= 2.2 ? "climbing hard" : lvl >= 1.5 ? "past the machine's line"
+    : lvl >= 1.2 ? "stirring" : "quiet";
   var btn = el("g-alarm");
   if (lvl !== null && lvl >= 1.4 && game.live) btn.classList.add("urgent");
   else btn.classList.remove("urgent");
@@ -834,8 +866,10 @@ function finishRound(calledDay) {
   game.machineScore += machinePoints(mLead);
   game.streak = o.streak;
   game.mult = o.mult;
+  if (lead !== null) game.leads.push(lead);
+  if (o.beat) game.beats += 1;
   setCred(game.cred + o.credDelta);
-  el("g-score").textContent = String(game.score);
+  showScore();
   showStreak();
 
   var headline, kind = "";
@@ -878,10 +912,18 @@ function endRun(reason) {
   var record = !b || game.score > b.score;
   if (record) saveBest({ score: game.score, rounds: game.round });
   showBest();
+  var good = game.leads.filter(function (d) { return d > 0; });
+  var avg = good.length ? good.reduce(function (a, b) { return a + b; }, 0) / good.length : null;
   var versus = game.score > game.machineScore
     ? "You outscored the machine " + game.score + " to " + game.machineScore + "."
-    : "The machine scored " + game.machineScore + " to your " + game.score +
-      ". It never gets bored or impatient, which is rather the point of writing the rule down.";
+    : game.score === game.machineScore
+      ? "You and the machine finished level on " + game.score + "."
+      : "The machine scored " + game.machineScore + " to your " + game.score +
+        ". It never gets bored or impatient, which is rather the point of writing the rule down.";
+  versus += " You beat it on <b>" + game.beats + " of " + plural(game.round, "outbreak") + "</b>";
+  versus += avg === null ? ", and never called one in time."
+          : ", and your typical warning was <b>" + plural(+avg.toFixed(0), "day") +
+            "</b> against the 14 that scores best.";
   el("g-result").insertAdjacentHTML("beforeend",
     '<div class="note' + (record ? " good" : "") + '">' + (reason ? reason + " " : "") +
     "You lasted <b>" + plural(game.round, "outbreak") + "</b> and scored <b>" + game.score +

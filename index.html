@@ -218,6 +218,18 @@
   .pips span.on { background: var(--good-line); }
   .pips span.on.danger { background: #c0392b; }
 
+  .hsub { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums;
+          line-height: 1.3; }
+  .hudcell.right { align-items: flex-end; text-align: right; }
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 620; padding: 2px 9px;
+          border-radius: 999px; margin-left: 7px; vertical-align: 1px;
+          background: var(--rule); color: var(--text-soft); }
+  .chip.warm { background: #fdf0d2; color: #8a6a08; }
+  .chip.hot  { background: #fbe3e0; color: #a3291c; }
+  @media (prefers-color-scheme: dark) {
+    .chip.warm { background: #3a2f12; color: #e3bb5c; }
+    .chip.hot  { background: #3d1f1b; color: #ef9a8e; }
+  }
   .meterwrap { margin: 14px 0 4px; }
   .meterhead { display: flex; justify-content: space-between; font-size: 14px;
                color: var(--text-soft); font-variant-numeric: tabular-nums;
@@ -420,22 +432,34 @@
      days running. It plays every round alongside you.</p>
 
   <div class="hud">
-    <div class="hudcell"><span class="hlabel">Round</span><span class="hval" id="g-round">0</span></div>
-    <div class="hudcell"><span class="hlabel">Score</span><span class="hval" id="g-score">0</span></div>
-    <div class="hudcell"><span class="hlabel">Streak</span><span class="hval" id="g-streak">none</span></div>
-    <div class="hudcell">
-      <span class="hlabel">Credibility</span>
-      <span class="pips" id="g-pips" title="each bad call costs one"></span>
-    </div>
-    <div class="hudcell grow"><span class="hlabel">Outbreak</span>
-      <span class="hval place" id="g-place">press start</span></div>
-    <div class="hudcell"><span class="hlabel">Best run</span><span class="hval dim" id="g-best">none yet</span></div>
+    <div class="hudcell"><span class="hlabel">Outbreak</span>
+      <span class="hval" id="g-round">0</span>
+      <span class="hsub" id="g-best">best run: none yet</span></div>
+    <div class="hudcell"><span class="hlabel">Score</span>
+      <span class="hval" id="g-score">0</span>
+      <span class="hsub" id="g-vs">machine 0</span></div>
+    <div class="hudcell"><span class="hlabel">Your warning</span>
+      <span class="hval" id="g-avg">&ndash;</span>
+      <span class="hsub">14 days is ideal</span></div>
+    <div class="hudcell"><span class="hlabel">Streak</span>
+      <span class="hval" id="g-streak">none</span>
+      <span class="hsub" id="g-streak-sub">3 in a row scores x1.5</span></div>
+    <div class="hudcell"><span class="hlabel">Credibility</span>
+      <span class="pips" id="g-pips"></span>
+      <span class="hsub" id="g-cred-sub">4 bad calls and the run ends</span></div>
+    <div class="hudcell grow right"><span class="hlabel">Right now</span>
+      <span class="hval place" id="g-place">press start</span>
+      <span class="hsub" id="g-wave"></span></div>
   </div>
 
   <div class="meterwrap" id="g-meter" hidden>
-    <div class="meterhead"><span id="g-day">Day 1</span><span id="g-level">1.00x baseline</span></div>
-    <div class="meter"><i id="g-meterfill"></i><span class="thresh" title="the automatic alarm fires here"></span></div>
-    <div class="meterfoot"><span>quiet</span><span class="threshlabel">1.5x, where the machine fires</span><span>3x</span></div>
+    <div class="meterhead">
+      <span id="g-day">Day 1</span>
+      <span><b id="g-level">1.00x</b> baseline <span class="chip" id="g-status">quiet</span></span>
+    </div>
+    <div class="meter"><i id="g-meterfill"></i><span class="thresh"></span></div>
+    <div class="meterfoot"><span>1x, where it started</span>
+      <span class="threshlabel">1.5x, the machine fires here</span><span>3x</span></div>
   </div>
 
   <div class="gamectl">
