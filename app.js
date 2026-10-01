@@ -617,15 +617,22 @@ function buildQuiz(containerId, setName) {
   syncChrome();
 }
 
-/* ---------- the game: call the outbreak ----------
-   The three early signals play in one day at a time and cases stay hidden, so the
-   student is deciding on exactly the information a health officer would have. Each
-   signal is drawn as a multiple of its own baseline, which is computed from the
-   first week only, so nothing about the future leaks into the chart. */
+/* ---------- the game: outbreak control ----------
+   The early signals play in one day at a time and cases stay hidden, so the student
+   decides on exactly the information a health officer would have. Each signal is drawn
+   as a multiple of its own baseline, taken from the first week only, so nothing about
+   the future leaks into the chart. The automatic alarm from activity 4 plays the same
+   round as an opponent. */
 var GAME_SIGS = ["searches", "survey", "doctor"];
 var ROUNDS = 5, IDEAL_LEAD = 14, MAX_ROUND_POINTS = 50;
-var game = { rounds: [], at: 0, score: 0, timer: null, day: 0, rows: [], surge: null,
-             called: null, series: null, live: false };
+var CRY_WOLF_LEAD = 42, CRED_PENALTY = 25, BEAT_BONUS = 15;
+var game = null;
+
+function newGame() {
+  return { rounds: [], at: 0, score: 0, machineScore: 0, cred: 100, streak: 0, best: 0,
+           timer: null, day: 0, rows: [], surge: null, machine: null, called: null,
+           series: null, live: false, paused: false, over: false };
+}
 
 function gameEligible() {
   var out = [], waves = Object.keys(WAVES).slice(0, 3);
@@ -634,8 +641,7 @@ function gameEligible() {
       var rows = waveSlice(byState, code, waves[w]);
       if (rows.length < 60) continue;
       var sIdx = surgeIndex(column(rows, "cases"));
-      /* needs a real surge with room to call it, and at least two usable signals */
-      if (sIdx === null || sIdx < 25) continue;
+      if (sIdx === null || sIdx < 25) continue;      /* needs room to call it */
       var have = 0;
       for (var g = 0; g < GAME_SIGS.length; g++) if (usable(rows, GAME_SIGS[g])) have++;
       if (have < 2) continue;
@@ -658,14 +664,23 @@ function baselineSeries(rows, key) {
   return x.map(function (v) { return v === null ? null : v / base; });
 }
 
+function setCred(v) {
+  game.cred = Math.max(0, Math.min(100, v));
+  el("g-cred").textContent = String(game.cred);
+  var bar = el("g-credbar");
+  bar.style.width = game.cred + "%";
+  if (game.cred <= 40) bar.classList.add("low"); else bar.classList.remove("low");
+}
+
 function startGame() {
   var pool = gameEligible();
-  game.rounds = [];
+  game = newGame();
   for (var i = 0; i < ROUNDS && pool.length; i++) {
     game.rounds.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   }
-  game.at = 0; game.score = 0;
   el("g-score").textContent = "0";
+  el("g-streak").textContent = "0";
+  setCred(100);
   el("g-start").hidden = true;
   loadRound();
 }
@@ -674,8 +689,10 @@ function loadRound() {
   var r = game.rounds[game.at];
   game.rows = waveSlice(byState, r.code, r.wave);
   game.surge = surgeIndex(column(game.rows, "cases"));
+  game.machine = alarmFor(game.rows, GAME_SIGS, 1.5, 3).alarm;   /* the activity 4 rule */
   game.called = null;
-  game.day = Math.min(14, game.rows.length - 1);   // open on the first fortnight
+  game.day = Math.min(14, game.rows.length - 1);
+  game.paused = false;
   game.series = {};
   GAME_SIGS.forEach(function (k) { game.series[k] = baselineSeries(game.rows, k); });
   el("g-round").textContent = (game.at + 1) + " of " + game.rounds.length;
@@ -684,22 +701,64 @@ function loadRound() {
   el("g-next").hidden = true;
   el("g-alarm").hidden = false;
   el("g-alarm").disabled = false;
-  el("g-alarm").textContent = "Sound the alarm";
+  el("g-pause").disabled = false;
+  el("g-pause").textContent = "Pause";
   game.live = true;
   drawGame();
-  game.timer = setInterval(tickGame, REDUCED ? 140 : 55);
+  runClock();
+}
+
+function runClock() {
+  if (game.timer) clearInterval(game.timer);
+  var ms = +el("g-speed").value;
+  game.timer = setInterval(tickGame, REDUCED ? Math.max(ms, 120) : ms);
 }
 
 function tickGame() {
+  if (!game.live || game.paused) return;
   game.day += 1;
   if (game.day >= game.rows.length - 1) { finishRound(null); return; }
   drawGame();
+  liveReadout();
+}
+
+/* the combined level the student can see right now, same recipe as activity 4 */
+function currentLevel() {
+  var sum = 0, n = 0;
+  GAME_SIGS.forEach(function (k) {
+    var ser = game.series[k];
+    if (ser && ser[game.day] !== null) { sum += ser[game.day]; n++; }
+  });
+  return n ? sum / n : null;
+}
+
+function liveReadout() {
+  var lvl = currentLevel(), d = game.rows[game.day].date;
+  var mood = lvl === null ? "" : lvl >= 2 ? " and climbing hard"
+           : lvl >= 1.4 ? " and rising" : " and quiet so far";
+  el("g-live").innerHTML = "Day <b>" + (game.day + 1) + "</b> of " + game.rows.length +
+    ", " + fmtDate(d) + ". Signals at <b>" + (lvl === null ? "n/a" : lvl.toFixed(2) + "x") +
+    "</b> baseline" + mood + ".";
 }
 
 function drawGame(reveal) {
   var rows = game.rows, upto = reveal ? rows.length : game.day + 1;
   var dates = rows.map(function (x) { return x.date; });
-  var traces = [];
+  var traces = [], t = theme(), shapes = [], anns = [];
+
+  if (reveal) {
+    var cases = column(rows, "cases"), cmax = 0, top = 0;
+    for (var i = 0; i < cases.length; i++) if (cases[i] > cmax) cmax = cases[i];
+    GAME_SIGS.forEach(function (k) {
+      var ser = game.series[k];
+      if (!ser) return;
+      for (var j = 0; j < ser.length; j++) if (ser[j] !== null && ser[j] > top) top = ser[j];
+    });
+    traces.push({ x: dates, y: cases.map(function (v) { return v === null ? null : v / cmax * top; }),
+      name: "cases (shape only, not to scale)", type: "scatter", mode: "lines", fill: "tozeroy",
+      line: { color: colorOf("cases"), width: 1 },
+      fillcolor: "rgba(130,130,130,0.16)", hoverinfo: "skip" });
+  }
   GAME_SIGS.forEach(function (k) {
     if (!game.series[k]) return;
     traces.push({ x: dates.slice(0, upto), y: game.series[k].slice(0, upto),
@@ -707,39 +766,20 @@ function drawGame(reveal) {
       line: { color: colorOf(k), width: 2 },
       hovertemplate: LABEL[k] + ": %{y:.2f}x baseline<extra></extra>" });
   });
-  var t = theme(), shapes = [], anns = [];
+
+  function mark(idx, color, text, y, anchor, dash) {
+    shapes.push({ type: "line", xref: "x", yref: "paper", x0: dates[idx], x1: dates[idx],
+                  y0: 0, y1: 1, line: { color: color, width: 2, dash: dash || "solid" } });
+    anns.push({ x: dates[idx], y: y, xref: "x", yref: "paper", text: text, showarrow: false,
+                xanchor: anchor, bgcolor: css("--surface"),
+                font: { size: 12, color: color } });
+  }
+  if (game.called !== null) mark(game.called, "#c0392b", "you ", 0.93, "right");
   if (reveal) {
-    var cases = column(rows, "cases"), cmax = 0;
-    for (var i = 0; i < cases.length; i++) if (cases[i] > cmax) cmax = cases[i];
-    var top = 0;
-    GAME_SIGS.forEach(function (k) {
-      if (!game.series[k]) return;
-      for (var j = 0; j < game.series[k].length; j++) {
-        if (game.series[k][j] !== null && game.series[k][j] > top) top = game.series[k][j];
-      }
-    });
-    /* cases are only revealed at the end, scaled to sit under the signals as a backdrop */
-    traces.unshift({ x: dates, y: cases.map(function (v) { return v === null ? null : v / cmax * top; }),
-      name: "cases (shape only, not to scale)", type: "scatter", mode: "lines", fill: "tozeroy",
-      line: { color: colorOf("cases"), width: 1 },
-      fillcolor: "rgba(130,130,130,0.16)", hoverinfo: "skip" });
-    if (game.surge !== null) {
-      shapes.push({ type: "line", xref: "x", yref: "paper", x0: dates[game.surge],
-                    x1: dates[game.surge], y0: 0, y1: 1,
-                    line: { color: css("--text"), width: 2 } });
-      anns.push({ x: dates[game.surge], y: 1.05, xref: "x", yref: "paper", text: " surge",
-                  showarrow: false, xanchor: "left", bgcolor: css("--surface"),
-                  font: { size: 12, color: css("--text") } });
-    }
+    if (game.machine !== null) mark(game.machine, colorOf("searches"), " auto alarm", 0.80, "left", "dot");
+    if (game.surge !== null) mark(game.surge, css("--text"), " surge", 1.05, "left");
   }
-  if (game.called !== null) {
-    shapes.push({ type: "line", xref: "x", yref: "paper", x0: dates[game.called],
-                  x1: dates[game.called], y0: 0, y1: 1,
-                  line: { color: "#c0392b", width: 2 } });
-    anns.push({ x: dates[game.called], y: 0.93, xref: "x", yref: "paper", text: "you called it ",
-                showarrow: false, xanchor: "right", bgcolor: css("--surface"),
-                font: { size: 12, color: "#c0392b" } });
-  }
+
   Plotly.react("g-chart", traces, {
     height: 380, margin: { l: 54, r: 18, t: 26, b: 44 },
     font: t.font, paper_bgcolor: t.paper_bgcolor, plot_bgcolor: t.plot_bgcolor,
@@ -753,66 +793,126 @@ function drawGame(reveal) {
 }
 
 function scoreCall(lead) {
-  if (lead === null || lead <= 0) return 0;
+  if (lead === null || lead <= 0 || lead > CRY_WOLF_LEAD) return 0;
   return Math.max(0, Math.round(MAX_ROUND_POINTS - Math.abs(lead - IDEAL_LEAD) * 2));
 }
 
 function finishRound(calledDay) {
-  clearInterval(game.timer); game.timer = null; game.live = false;
-  game.called = calledDay;
+  clearInterval(game.timer); game.timer = null;
+  game.live = false; game.called = calledDay;
   el("g-alarm").disabled = true;
+  el("g-pause").disabled = true;
   drawGame(true);
 
   var lead = (calledDay === null || game.surge === null) ? null : game.surge - calledDay;
-  var pts = scoreCall(lead);
-  game.score += pts;
-  el("g-score").textContent = String(game.score);
+  var mLead = (game.machine === null || game.surge === null) ? null : game.surge - game.machine;
+  var pts = scoreCall(lead), mPts = scoreCall(mLead);
+  game.machineScore += mPts;
 
-  var msg, kind;
+  var lines = [], kind = "", credHit = 0;
   if (calledDay === null) {
-    msg = "You never called it. The wave came and went."; kind = "warn";
+    lines.push("You never called it. The wave came and went."); credHit = CRED_PENALTY; kind = "warn";
   } else if (lead <= 0) {
-    msg = "Too late. The surge had already started " + plural(-lead, "day") + " earlier.";
-    kind = "warn";
+    lines.push("Too late. The surge had already started " + plural(-lead, "day") + " earlier.");
+    credHit = CRED_PENALTY; kind = "warn";
+  } else if (lead > CRY_WOLF_LEAD) {
+    lines.push("False alarm. You called it " + plural(lead, "day") + " out, which is so far " +
+               "ahead you were reacting to noise. People stop listening.");
+    credHit = CRED_PENALTY; kind = "warn";
   } else if (pts >= 40) {
-    msg = "Called it " + plural(lead, "day") + " ahead. That is the sweet spot."; kind = "good";
+    lines.push("Called it " + plural(lead, "day") + " ahead. That is the sweet spot."); kind = "good";
   } else if (lead > IDEAL_LEAD) {
-    msg = "Called it " + plural(lead, "day") + " ahead. Early, but that far out you were " +
-          "reading noise as much as a wave."; kind = "";
+    lines.push("Called it " + plural(lead, "day") + " ahead. Early, but defensible.");
   } else {
-    msg = "Called it " + plural(lead, "day") + " ahead. It counts, though a little more " +
-          "warning would have given people time to act."; kind = "";
+    lines.push("Called it " + plural(lead, "day") + " ahead. It counts, though more warning " +
+               "would have given people time to act.");
   }
-  note("g-result", msg + " <b>+" + pts + "</b>", kind);
 
-  if (game.at < game.rounds.length - 1) {
+  /* did the student time it better than the activity 4 rule? */
+  var beat = false;
+  if (pts > 0 && (mLead === null || Math.abs(lead - IDEAL_LEAD) < Math.abs(mLead - IDEAL_LEAD))) {
+    beat = true;
+  }
+  var bonus = beat ? BEAT_BONUS : 0;
+  if (mLead === null) lines.push("The automatic alarm never fired here.");
+  else lines.push("The automatic alarm called it " + plural(mLead, "day") + " ahead.");
+  if (beat) lines.push("<b>You beat it. +" + BEAT_BONUS + "</b>");
+
+  if (pts >= 30) { game.streak += 1; } else { game.streak = 0; }
+  var mult = game.streak >= 3 ? 1.5 : game.streak === 2 ? 1.25 : 1;
+  var gained = Math.round((pts + bonus) * mult);
+  if (mult > 1 && pts > 0) lines.push("Streak of " + game.streak + ", so that is x" + mult + ".");
+  game.score += gained;
+  if (credHit) { setCred(game.cred - credHit); lines.push("Credibility -" + credHit + "."); }
+  el("g-score").textContent = String(game.score);
+  el("g-streak").textContent = String(game.streak);
+
+  note("g-result", lines.join(" ") + " <b>+" + gained + "</b>", kind);
+
+  if (game.cred <= 0) {
+    el("g-result").insertAdjacentHTML("beforeend",
+      '<div class="note warn"><b>Out of credibility.</b> After that many bad calls nobody ' +
+      'acts on your warnings, which is exactly how crying wolf ends. Final score ' +
+      game.score + '.</div>');
+    endGame();
+  } else if (game.at < game.rounds.length - 1) {
     el("g-next").hidden = false;
   } else {
     var best = ROUNDS * MAX_ROUND_POINTS;
+    var verdict = game.score > game.machineScore
+      ? "You outscored the automatic alarm " + game.score + " to " + game.machineScore + "."
+      : "The automatic alarm scored " + game.machineScore + " to your " + game.score +
+        ". It never gets bored or impatient, which is rather the point of writing the rule down.";
     var title = game.score >= best * 0.8 ? "You read those waves like an epidemiologist."
-              : game.score >= best * 0.55 ? "Solid instincts. A couple of calls were off."
+              : game.score >= best * 0.55 ? "Solid instincts, a couple of calls off."
               : game.score >= best * 0.3 ? "Getting there. Watch how the signals behave before they climb."
-              : "Tough round. Try again and watch the survey line in particular.";
+              : "Tough run. Try again and watch the survey line in particular.";
     el("g-result").insertAdjacentHTML("beforeend",
-      '<div class="note"><b>' + game.score + " out of " + best + ".</b> " + title + "</div>");
-    el("g-alarm").hidden = true;
-    el("g-start").hidden = false;
-    el("g-start").textContent = "Play again";
+      '<div class="note"><b>' + game.score + " out of " + best + ".</b> " + verdict +
+      " " + title + "</div>");
+    endGame();
   }
 }
 
+function endGame() {
+  game.over = true;
+  el("g-alarm").hidden = true;
+  el("g-next").hidden = true;
+  el("g-start").hidden = false;
+  el("g-start").textContent = "Play again";
+  el("g-live").textContent = "";
+}
+
+function callAlarm() {
+  if (game && game.live) finishRound(game.day);
+}
+
 function wireGame() {
-  el("g-alarm").disabled = true;          // nothing to call until a round is running
+  game = newGame();
+  el("g-alarm").disabled = true;
+  el("g-pause").disabled = true;
+  setCred(100);
   el("g-start").addEventListener("click", startGame);
-  el("g-alarm").addEventListener("click", function () {
-    if (game.live) finishRound(game.day);
-  });
+  el("g-alarm").addEventListener("click", callAlarm);
   el("g-next").addEventListener("click", function () { game.at += 1; loadRound(); });
+  el("g-pause").addEventListener("click", function () {
+    if (!game.live) return;
+    game.paused = !game.paused;
+    el("g-pause").textContent = game.paused ? "Resume" : "Pause";
+  });
+  el("g-speed").addEventListener("change", function () { if (game.live) runClock(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.code !== "Space" && e.key !== " ") return;
+    var tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "SELECT" || tag === "BUTTON" || tag === "TEXTAREA") return;
+    if (game && game.live) { e.preventDefault(); callAlarm(); }
+  });
   Plotly.react("g-chart", [], { height: 380, margin: { l: 54, r: 18, t: 26, b: 44 },
     font: theme().font, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
     xaxis: { visible: false }, yaxis: { visible: false },
     annotations: [{ x: 0.5, y: 0.5, xref: "paper", yref: "paper", showarrow: false,
-      text: "Press Start. The early signals arrive one day at a time.<br>Call the wave before it does.",
+      text: "Press Start. The signals arrive one day at a time.<br>" +
+            "Call the wave before it arrives, and before the machine does.",
       font: { size: 15, color: css("--text-faint") } }] }, CONFIG);
 }
 
