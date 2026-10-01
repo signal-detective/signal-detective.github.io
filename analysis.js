@@ -230,10 +230,44 @@ function median(values) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+/* ---------- game scoring ----------
+   Kept here, pure and free of any DOM, so the arithmetic can be unit tested.
+   lead / machineLead are days of warning before the surge, or null for no call. */
+var IDEAL_LEAD = 14, MAX_ROUND_POINTS = 50, CRY_WOLF_LEAD = 42;
+var CRED_PENALTY = 25, CRED_REWARD = 25, BEAT_BONUS = 15, GREAT_CALL = 44;
+
+function roundOutcome(lead, machineLead, streakBefore) {
+  var missed = (lead === null || lead <= 0);
+  var falseAlarm = (!missed && lead > CRY_WOLF_LEAD);
+  var pts = (missed || falseAlarm)
+    ? 0
+    : Math.max(0, Math.round(MAX_ROUND_POINTS - Math.abs(lead - IDEAL_LEAD) * 2));
+
+  var beat = pts > 0 && (machineLead === null || machineLead <= 0 ||
+             Math.abs(lead - IDEAL_LEAD) < Math.abs(machineLead - IDEAL_LEAD));
+  var bonus = beat ? BEAT_BONUS : 0;
+
+  var streak = pts >= 30 ? streakBefore + 1 : 0;
+  var mult = streak >= 3 ? 1.5 : streak === 2 ? 1.25 : 1;
+  var gained = Math.round((pts + bonus) * mult);
+
+  var credDelta = (missed || falseAlarm) ? -CRED_PENALTY
+                : (pts >= GREAT_CALL ? CRED_REWARD : 0);
+
+  return { pts: pts, bonus: bonus, beat: beat, streak: streak, mult: mult,
+           gained: gained, credDelta: credDelta, missed: missed, falseAlarm: falseAlarm };
+}
+
+function machinePoints(machineLead) {
+  if (machineLead === null || machineLead <= 0 || machineLead > CRY_WOLF_LEAD) return 0;
+  return Math.max(0, Math.round(MAX_ROUND_POINTS - Math.abs(machineLead - IDEAL_LEAD) * 2));
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { parseCSV: parseCSV, waveSlice: waveSlice, column: column,
     rescale: rescale, takeoffIndex: takeoffIndex, surgeIndex: surgeIndex,
     bestLead: bestLead, alarmFor: alarmFor, countryLeads: countryLeads,
     scoreAlarm: scoreAlarm, usable: usable, median: median,
+    roundOutcome: roundOutcome, machinePoints: machinePoints,
     SIGNALS: SIGNALS, WAVES: WAVES, STATE_NAMES: STATE_NAMES };
 }

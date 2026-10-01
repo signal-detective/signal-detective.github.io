@@ -201,6 +201,61 @@
            font-variant-numeric: tabular-nums; min-height: 24px; }
   .glive b { color: var(--text); font-weight: 620; }
   .gcontrols select { min-width: 110px; padding: 6px 28px 6px 10px; font-size: 14px; }
+  .hud { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center;
+         padding: 15px 18px; background: var(--surface-sunk); border-radius: var(--radius);
+         margin: 26px 0 8px; }
+  .hudcell { display: flex; flex-direction: column; gap: 3px; min-width: 64px; }
+  .hudcell.grow { flex: 1; min-width: 150px; }
+  .hlabel { font-size: 11px; font-weight: 600; color: var(--text-faint);
+            text-transform: uppercase; letter-spacing: 0.06em; }
+  .hval { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums;
+          letter-spacing: -0.01em; line-height: 1.15; }
+  .hval.place { font-size: 17px; font-weight: 600; }
+  .hval.dim { font-size: 14px; font-weight: 550; color: var(--text-soft); }
+  .pips { display: flex; gap: 5px; padding-top: 4px; }
+  .pips span { width: 17px; height: 9px; border-radius: 3px; background: var(--rule);
+               transition: background-color 0.25s ease; }
+  .pips span.on { background: var(--good-line); }
+  .pips span.on.danger { background: #c0392b; }
+
+  .meterwrap { margin: 14px 0 4px; }
+  .meterhead { display: flex; justify-content: space-between; font-size: 14px;
+               color: var(--text-soft); font-variant-numeric: tabular-nums;
+               margin-bottom: 6px; }
+  .meterhead span:last-child { font-weight: 620; color: var(--text); }
+  .meter { position: relative; height: 10px; background: var(--rule);
+           border-radius: 5px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: 5px;
+             background: var(--s3); transition: width 0.12s linear, background-color 0.3s ease; }
+  .meter i.warm { background: var(--s4); }
+  .meter i.hot  { background: #c0392b; }
+  .meter .thresh { position: absolute; left: 50%; top: -3px; width: 2px; height: 16px;
+                   background: var(--text-faint); }
+  .meterfoot { display: flex; justify-content: space-between; font-size: 12px;
+               color: var(--text-faint); margin-top: 5px; }
+  .threshlabel { text-align: center; }
+
+  .gamectl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+             margin: 16px 0 4px; }
+  .gkey { font-size: 13px; color: var(--text-faint); }
+  kbd { font: inherit; font-size: 12px; padding: 2px 7px; border-radius: 4px;
+        border: 1px solid var(--rule-strong); background: var(--surface);
+        color: var(--text-soft); }
+  button.alarm { font: inherit; font-size: 17px; font-weight: 650; padding: 13px 30px;
+                 border-radius: var(--radius); cursor: pointer; border: 0;
+                 background: #c0392b; color: #fff; letter-spacing: 0.01em; }
+  button.alarm:disabled { background: var(--rule); color: var(--text-faint); cursor: not-allowed; }
+  button.alarm:not(:disabled):active { transform: translateY(1px); }
+  button.alarm.urgent { animation: throb 1.15s ease-in-out infinite; }
+  @keyframes throb { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.45); }
+                     50% { box-shadow: 0 0 0 9px rgba(192,57,43,0); } }
+  @media (prefers-reduced-motion: reduce) { button.alarm.urgent { animation: none; } }
+  button.play.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .gspacer { flex: 1; }
+  .rcard { display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: baseline;
+           margin-bottom: 8px; }
+  .rcard b { font-variant-numeric: tabular-nums; }
+  .rpts { font-size: 20px; font-weight: 680; }
   .closing ol { max-width: 64ch; color: var(--text-soft); padding-left: 22px; }
   .closing li { margin-bottom: 14px; }
   .closing li b { color: var(--text); font-weight: 600; }
@@ -359,43 +414,45 @@
 <section id="game">
   <h2><span class="num">5</span>Outbreak control</h2>
   <p>You are the health officer. The early signals arrive one day at a time, cases are
-     hidden, and you decide when to raise the alarm. Five rounds, five different places.</p>
+     hidden, and you decide when to raise the alarm. There are 150 real outbreaks in here,
+     and the run keeps going as long as your credibility holds.</p>
   <p>You are up against the automatic alarm from activity 4, the one set to 1.5x for three
-     days running. Beat its timing and you take the round.</p>
-  <p class="aside"><b>Credibility</b> is the thing you can actually lose. Call a wave that
-     never comes and people stop listening, so a false alarm costs you 25. Miss a wave
-     entirely and it costs you 25 as well. Run out and the game ends early, because nobody
-     is taking your calls any more.</p>
+     days running. It plays every round alongside you.</p>
 
-  <div class="gamebar">
-    <div class="gstat"><span class="glabel">Round</span><span class="gval" id="g-round">1 of 5</span></div>
-    <div class="gstat"><span class="glabel">Score</span><span class="gval" id="g-score">0</span></div>
-    <div class="gstat"><span class="glabel">Streak</span><span class="gval" id="g-streak">0</span></div>
-    <div class="gstat gcred">
-      <span class="glabel">Credibility</span>
-      <div class="credrow"><div class="credbar"><i id="g-credbar"></i></div>
-        <span class="gval" id="g-cred">100</span></div>
+  <div class="hud">
+    <div class="hudcell"><span class="hlabel">Round</span><span class="hval" id="g-round">0</span></div>
+    <div class="hudcell"><span class="hlabel">Score</span><span class="hval" id="g-score">0</span></div>
+    <div class="hudcell"><span class="hlabel">Streak</span><span class="hval" id="g-streak">none</span></div>
+    <div class="hudcell">
+      <span class="hlabel">Credibility</span>
+      <span class="pips" id="g-pips" title="each bad call costs one"></span>
     </div>
-    <div class="gspacer"></div>
-    <div class="gstat"><span class="glabel">Where</span><span class="gval" id="g-place">ready</span></div>
+    <div class="hudcell grow"><span class="hlabel">Outbreak</span>
+      <span class="hval place" id="g-place">press start</span></div>
+    <div class="hudcell"><span class="hlabel">Best run</span><span class="hval dim" id="g-best">none yet</span></div>
   </div>
 
-  <div class="gamebar gcontrols">
+  <div class="meterwrap" id="g-meter" hidden>
+    <div class="meterhead"><span id="g-day">Day 1</span><span id="g-level">1.00x baseline</span></div>
+    <div class="meter"><i id="g-meterfill"></i><span class="thresh" title="the automatic alarm fires here"></span></div>
+    <div class="meterfoot"><span>quiet</span><span class="threshlabel">1.5x, where the machine fires</span><span>3x</span></div>
+  </div>
+
+  <div class="gamectl">
     <button type="button" class="alarm" id="g-alarm">Raise the alarm</button>
-    <span class="gkey">or press space</span>
+    <span class="gkey">or press <kbd>space</kbd></span>
     <div class="gspacer"></div>
     <button type="button" class="play" id="g-pause">Pause</button>
-    <div class="gstat"><span class="glabel">Speed</span>
-      <select id="g-speed">
-        <option value="110">Slow</option>
-        <option value="60" selected>Normal</option>
-        <option value="28">Fast</option>
-      </select></div>
-    <button type="button" class="play" id="g-next" hidden>Next round</button>
-    <button type="button" class="play" id="g-start">Start</button>
+    <select id="g-speed" aria-label="Speed">
+      <option value="110">Slow</option>
+      <option value="60" selected>Normal</option>
+      <option value="28">Fast</option>
+    </select>
+    <button type="button" class="play" id="g-end" hidden>End run</button>
+    <button type="button" class="play primary" id="g-next" hidden>Next outbreak</button>
+    <button type="button" class="play primary" id="g-start">Start</button>
   </div>
 
-  <div id="g-live" class="glive"></div>
   <div id="g-chart" class="chart"></div>
   <div id="g-result"></div>
 </section>
