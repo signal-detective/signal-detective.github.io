@@ -122,6 +122,10 @@
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
          margin-right: 8px; vertical-align: baseline; }
   .scroller { overflow-x: auto; }
+  table.signals { margin-top: 22px; font-size: 15px; }
+  table.signals td:first-child { white-space: nowrap; font-weight: 550; }
+  .aside { font-size: 15px; color: var(--text-soft); margin-top: 14px;
+           padding-left: 14px; border-left: 2px solid var(--rule-strong); max-width: 64ch; }
 
   .quiz { margin-top: 30px; padding: 20px 22px 18px; background: var(--surface-sunk);
           border-radius: var(--radius); }
@@ -170,6 +174,20 @@
   .verdict.right b { color: var(--good-text); }
   .verdict.wrong b { color: var(--warn-text); }
 
+  .gamebar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+             margin: 24px 0 6px; padding: 14px 18px; background: var(--surface-sunk);
+             border-radius: var(--radius); }
+  .gstat { display: flex; flex-direction: column; gap: 2px; }
+  .glabel { font-size: 12px; font-weight: 580; color: var(--text-soft);
+            text-transform: uppercase; letter-spacing: 0.04em; }
+  .gval { font-size: 19px; font-weight: 620; font-variant-numeric: tabular-nums; }
+  .gspacer { flex: 1; }
+  button.alarm { font: inherit; font-size: 16px; font-weight: 600; padding: 11px 26px;
+                 border-radius: var(--radius); cursor: pointer; border: 0;
+                 background: #c0392b; color: #fff; }
+  button.alarm:disabled { background: var(--rule); color: var(--text-faint); cursor: not-allowed; }
+  button.alarm:not(:disabled):active { transform: translateY(1px); }
+  @media (max-width: 640px) { .gamebar { gap: 12px 16px; } button.alarm { width: 100%; } }
   .closing ol { max-width: 64ch; color: var(--text-soft); padding-left: 22px; }
   .closing li { margin-bottom: 14px; }
   .closing li b { color: var(--text); font-weight: 600; }
@@ -199,8 +217,31 @@
   <p class="chain">infected, then Google your symptoms, then tell a survey you feel sick,
      then see a doctor, then test positive, then go to hospital, and some people die</p>
   <p style="margin-top:18px">So some of them should move earlier than others. These are real
-     numbers from every US state between June 2020 and March 2022. Find out which signal
-     warns us first, then build an alarm with it.</p>
+     numbers from all 50 US states and the District of Columbia, 51 places in total, between
+     June 2020 and March 2022. Find out which signal warns us first, then build an alarm
+     with it.</p>
+
+  <div class="scroller"><table class="signals">
+    <caption>The six signals</caption>
+    <thead><tr><th>Signal</th><th>Where it comes from</th><th>What it counts</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot" style="background:var(--s1)"></span>Searches</td>
+          <td>Google</td><td>Searches for loss of smell or taste, an unusual early COVID symptom</td></tr>
+      <tr><td><span class="dot" style="background:var(--s2)"></span>Survey</td>
+          <td>A daily Facebook survey</td><td>Share of people who said they felt ill with COVID-like symptoms</td></tr>
+      <tr><td><span class="dot" style="background:var(--s3)"></span>Doctor visits</td>
+          <td>Insurance claims</td><td>Share of all doctor visits that were for COVID-like illness</td></tr>
+      <tr><td><span class="dot" style="background:var(--s-ref)"></span>Cases</td>
+          <td>Lab tests</td><td>Positive tests per 100,000 people</td></tr>
+      <tr><td><span class="dot" style="background:var(--s4)"></span>Hospital</td>
+          <td>Hospital reports</td><td>New COVID admissions per 100,000 people</td></tr>
+      <tr><td><span class="dot" style="background:var(--s5)"></span>Deaths</td>
+          <td>Death records</td><td>COVID deaths per 100,000 people</td></tr>
+    </tbody>
+  </table></div>
+  <p class="aside">Counting <b>per 100,000 people</b> rather than as a plain total is what
+     lets California be compared with Wyoming. A raw count would only tell you which state
+     is bigger.</p>
 </header>
 
 <div id="loading" class="loading">Loading the data...</div>
@@ -213,7 +254,7 @@
      chart. The star marks that signal's takeoff: the first day it got halfway to its peak.</p>
   <p>Start with your own state, then check whether the same signal wins in another wave.</p>
   <div class="controls">
-    <div class="field"><label for="a1-state">State</label>
+    <div class="field"><label for="a1-state">State or DC</label>
       <select id="a1-state"></select></div>
     <div class="field"><label for="a1-wave">Wave</label>
       <select id="a1-wave"></select></div>
@@ -231,8 +272,11 @@
   <p>One state could be luck, so this runs the same comparison on all 50 states and DC.
      For each one we slide a signal backwards and forwards in time until it best matches
      that state's case curve. How far we had to slide it is its warning time.</p>
-  <p>Each dot is a state. Dots right of the zero line warned early. Dots left of it moved
-     after cases.</p>
+  <p>Each dot is one of the 51 places. Dots right of the zero line warned early, which
+     epidemiologists call a <b>leading indicator</b>. Dots left of it moved after cases,
+     a <b>lagging indicator</b>. The thick black line is the <b>median</b>: line the places
+     up in order and it is the middle one, which is a fairer summary than any single place
+     because one odd result cannot drag it far.</p>
   <div class="controls">
     <div class="field"><label for="a2-wave">Wave</label>
       <select id="a2-wave"></select></div>
@@ -268,11 +312,15 @@
   <h2><span class="num">4</span>Build an alarm</h2>
   <p>Now make something useful out of it. Your alarm watches the signals you tick and goes
      off when they climb far enough above where they started and stay there.</p>
-  <p>Two dials. <b>Level</b> is how big a jump you demand. <b>Days in a row</b> is how long
-     it has to last before you believe it. Loose settings ring early but cry wolf. Strict
-     settings are trustworthy but slow. No setting wins on both, which is the whole problem.</p>
+  <p>Two dials. <b>Level</b> is how big a jump you demand: 1.5 means the signals have climbed
+     to one and a half times their <b>baseline</b>, the level they sat at during the first week
+     shown. <b>Days in a row</b> is how long that has to last before you believe it.</p>
+  <p>You are trying to beat the <b>surge</b>, marked on the lower chart. That is the day cases
+     reached half their peak, the point where a wave is unmistakably underway. Loose settings
+     ring early but cry wolf. Strict settings are trustworthy but slow. No setting wins on
+     both, which is the whole problem.</p>
   <div class="controls">
-    <div class="field"><label for="a4-state">State</label>
+    <div class="field"><label for="a4-state">State or DC</label>
       <select id="a4-state"></select></div>
     <div class="field"><label for="a4-wave">Wave</label>
       <select id="a4-wave"></select></div>
@@ -295,8 +343,32 @@
   <div class="quiz" id="quiz-a4"></div>
 </section>
 
+<section id="game">
+  <h2><span class="num">5</span>Call the outbreak</h2>
+  <p>Now do it live. You are the health officer for one place, and the early signals come in
+     one day at a time. Cases are hidden, because in a real outbreak you would not have them
+     yet. Some places only have two of the three signals, which is part of the job.</p>
+  <p>Hit the button the moment you think a wave is starting. Then the real case curve is
+     revealed and you find out whether you called it.</p>
+  <p class="aside">Scoring rewards about <b>two weeks</b> of warning. That is long enough to
+     actually do something and short enough that you were reading a wave rather than guessing.
+     Calling it after the surge scores nothing, and so does calling it six weeks out.</p>
+
+  <div class="gamebar">
+    <div class="gstat"><span class="glabel">Round</span><span class="gval" id="g-round">1 of 5</span></div>
+    <div class="gstat"><span class="glabel">Score</span><span class="gval" id="g-score">0</span></div>
+    <div class="gstat"><span class="glabel">Place</span><span class="gval" id="g-place">ready</span></div>
+    <div class="gspacer"></div>
+    <button type="button" class="alarm" id="g-alarm">Sound the alarm</button>
+    <button type="button" class="play" id="g-next" hidden>Next round</button>
+    <button type="button" class="play" id="g-start">Start</button>
+  </div>
+  <div id="g-chart" class="chart"></div>
+  <div id="g-result"></div>
+</section>
+
 <section class="closing">
-  <h2>Worth arguing about</h2>
+  <h2>Worth discussing</h2>
   <ol>
     <li><b>Searches has no data at all for eight states</b>, and the survey only reached
         people on Facebook. Cases only counted people who got a test. Whose illness does

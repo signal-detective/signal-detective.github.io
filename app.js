@@ -88,7 +88,7 @@ function drawA1() {
   }
   if (!shown.length) {
     Plotly.purge("a1-chart");
-    note("a1-note", "None of the signals you picked have data here. Try another state or wave.", "warn");
+    note("a1-note", "None of the signals you picked have data here. Try another place or wave.", "warn");
     el("a1-table").innerHTML = ""; return;
   }
 
@@ -205,7 +205,7 @@ function drawA2() {
   }, CONFIG);
 
   var best = order[order.length - 1], worst = order[0];
-  note("a2-note", "Each dot is one state. <b>" + LABEL[best] + "</b> warned earliest, by a " +
+  note("a2-note", "Each dot is one place. <b>" + LABEL[best] + "</b> warned earliest, by a " +
     "median of <b>" + (meds[best] > 0 ? "+" : "") + meds[best].toFixed(0) + " days</b>. " +
     "<b>" + LABEL[worst] + "</b> came in at " + (meds[worst] > 0 ? "+" : "") +
     meds[worst].toFixed(0) + " days, so it moved after cases rather than before.");
@@ -218,9 +218,9 @@ function drawA2() {
       "<td class='num'>" + pts.length + "</td></tr>";
   }).join("");
   el("a2-table").innerHTML =
-    "<caption>Across every state</caption><thead><tr><th>Signal</th>" +
-    "<th>Median days of warning</th><th>States it warned early</th>" +
-    "<th>States measured</th></tr></thead><tbody>" + body + "</tbody>";
+    "<caption>Across all 50 states and DC</caption><thead><tr><th>Signal</th>" +
+    "<th>Median days of warning</th><th>Places it warned early</th>" +
+    "<th>Places measured</th></tr></thead><tbody>" + body + "</tbody>";
 }
 
 /* ---------- activity 3 ---------- */
@@ -303,7 +303,7 @@ function drawA3() {
   var shownStates = d.codes.length, totalStates = Object.keys(STATE_NAMES).length;
   if (shownStates < totalStates) {
     note("a3-note", LABEL[key] + " is only reported for " + shownStates + " of " +
-      totalStates + " states this week. Blank means no data, not zero.", "warn");
+      totalStates + " places this week. Blank means no data, not zero.", "warn");
   } else clearNote("a3-note");
 }
 function pickKey(label) {
@@ -393,16 +393,16 @@ function drawA4() {
   if (!sc.n) verdict = "It never rang anywhere. Lower the level.";
   else if (sc.median < 0) verdict = "Too slow to be useful. On average it rings after the surge has started.";
   else if (sc.twitchy > 6) verdict = "Jumpy. It rings more than six weeks early in " +
-    plural(sc.twitchy, "state") + ", which in real life means crying wolf.";
+    plural(sc.twitchy, "place") + ", which in real life means crying wolf.";
   else if (sc.median >= 10) verdict = "Solid. Early enough to act on, without going off constantly.";
   else verdict = "It works, but the warning is short. See if you can stretch it.";
   el("a4-table").innerHTML =
-    "<caption>The same alarm, tested on every state</caption><tbody>" +
-    "<tr><td>Rang before the surge</td><td class='num'>" + sc.early + " of " + sc.total + " states</td></tr>" +
+    "<caption>The same alarm, tested on all 50 states and DC</caption><tbody>" +
+    "<tr><td>Rang before the surge</td><td class='num'>" + sc.early + " of " + sc.total + " places</td></tr>" +
     "<tr><td>Typical warning</td><td class='num'>" +
       (sc.n ? (sc.median > 0 ? "+" : "") + sc.median.toFixed(0) + " days" : "n/a") + "</td></tr>" +
-    "<tr><td>Never rang</td><td class='num'>" + plural(sc.silent, "state") + "</td></tr>" +
-    "<tr><td>Rang more than 6 weeks early</td><td class='num'>" + plural(sc.twitchy, "state") + "</td></tr>" +
+    "<tr><td>Never rang</td><td class='num'>" + plural(sc.silent, "place") + "</td></tr>" +
+    "<tr><td>Rang more than 6 weeks early</td><td class='num'>" + plural(sc.twitchy, "place") + "</td></tr>" +
     "</tbody>";
   el("a4-note").insertAdjacentHTML("beforeend", '<div class="note">' + verdict + "</div>");
 }
@@ -438,7 +438,7 @@ var QUIZ_SETS = {
                 "nobody in Alaska searched for those symptoms",
                 "Alaska had no COVID that year"],
       answer: 0,
-      why: "Google withholds counts that are too small to publish safely. Eight states are blank for this reason. A gap in the data is not a measurement of zero.",
+      why: "When too few people in a place search for something, Google withholds the number rather than risk identifying individuals. Eight places are blank for that reason. A gap in the data is not a measurement of zero, and treating it as zero would be a real mistake.",
       hint: "A missing number and a number that equals zero are two very different claims." },
     { ask: "Survey and doctor visits often take off before cases. In plain terms, what does that mean happened?",
       options: ["people felt ill and sought help before their test was counted",
@@ -462,56 +462,56 @@ var QUIZ_SETS = {
       why: "A negative warning time means the signal follows cases instead of warning about them.",
       hint: "The zero line marks the moment cases move. What does sitting to the left of it mean?" },
     { ask: "The thick black line on each row is",
-      options: ["the median state, the middle of the pack",
-                "the best state",
-                "the national total"],
+      options: ["the median: the middle one once all 51 are lined up in order",
+                "the place with the best result",
+                "the total for the whole country"],
       answer: 0,
-      why: "Half the states fall on each side of it. It is a fairer summary than any single state, because a couple of odd states cannot drag it far.",
+      why: "Half of them sit on each side of it. That makes it a fairer summary than any single place, because one or two odd results cannot drag it far the way an average can.",
       hint: "It sits in the middle of each cloud of dots rather than at an edge." },
-    { ask: "Why run this on all 51 states instead of just one?",
-      options: ["one state could be a coincidence, a pattern across all of them is harder to dismiss",
+    { ask: "Why run this on all 50 states and DC instead of just one?",
+      options: ["one place could be a coincidence, a pattern across all of them is harder to dismiss",
                 "the chart looks better with more dots",
-                "each state used a different kind of test"],
+                "each place used a different kind of test"],
       answer: 0,
-      why: "Any single state can produce a striking result by luck. Seeing the same ordering repeat across 51 of them is what makes it a finding.",
-      hint: "Think about what you would say to someone who replied, 'that is just California'." },
+      why: "Any single place can produce a striking result by luck. Seeing the same ordering repeat across all 51 is what makes it a finding rather than a fluke.",
+      hint: "Think about what you would say to someone who replied, 'that is just one state'." },
     { ask: "Hospital admissions sit close to the zero line. What does that tell you?",
       options: ["they move at about the same time as cases, so they give almost no warning",
                 "hospitals were not reporting their numbers",
                 "hospital admissions are the best early warning"],
       answer: 0,
-      why: "Its median is within a day of zero in every wave. Hospital data is valuable for knowing how bad a wave is, but it arrives too late to warn you one is coming.",
+      why: "Its median is within a day of zero in every wave, so it is not a leading indicator. Hospital data is still valuable, because it tells you how severe a wave is, but it cannot tell you one is coming.",
       hint: "Zero means the signal moves at the same moment cases do. Is that any use as a warning?" }
   ],
   a4: [
     { ask: "You raise the level from 1.5 to 3.0. What happens to your alarm?",
-      options: ["it rings later, and in some states not at all",
-                "it rings earlier in every state",
+      options: ["it rings later, and in some places not at all",
+                "it rings earlier in every place",
                 "nothing changes"],
       answer: 0,
-      why: "A stricter alarm waits for a bigger jump, so it fires late or misses the wave entirely. In the Delta wave it goes from warning in 50 states to missing 16 of them completely.",
+      why: "A stricter alarm waits for a bigger jump, so it fires late or misses the wave entirely. In the Delta wave it goes from warning in 50 places to missing 16 of them completely.",
       hint: "Try it. Drag the level to 3.0 and watch the 'never rang' row in the table." },
     { ask: "What does asking for more days in a row protect you against?",
       options: ["one odd day of data setting the alarm off by itself",
                 "the signals being measured in different units",
-                "states that report their numbers late"],
+                "places that report their numbers late"],
       answer: 0,
-      why: "Requiring a run of days means a single strange reading cannot trigger it. Going from 1 day to 10 in the Delta wave cuts the states where it fires more than six weeks early from 8 down to 2.",
+      why: "Requiring a run of days means a single strange reading cannot trigger it. Going from 1 day to 10 in the Delta wave cuts the places where it fires more than six weeks early from 8 down to 2.",
       hint: "Picture a signal that spikes for exactly one day and then drops back to normal." },
-    { ask: "Set the level to 1.1 and the alarm rings in nearly every state, usually more than a month early. Why is that not automatically a better alarm?",
+    { ask: "Set the level to 1.1 and the alarm rings in nearly every place, usually more than a month early. Why is that not automatically a better alarm?",
       options: ["going off that easily means it would also go off when nothing was happening",
                 "it means the data is broken",
                 "a month of warning is never useful"],
       answer: 0,
-      why: "At that setting it fires more than six weeks ahead in up to 21 states. An alarm that rings at the slightest movement stops telling you anything, because it is always ringing.",
+      why: "At that setting it fires more than six weeks ahead in up to 21 places. An alarm that rings at the slightest movement stops telling you anything, because it is always ringing.",
       hint: "An alarm is only useful if its silence means something too." },
-    { ask: "Which change makes your alarm more cautious but slower?",
-      options: ["asking for more days in a row",
-                "lowering the level",
-                "watching fewer signals"],
+    { ask: "The level reads 1.5x. One and a half times what?",
+      options: ["the level the signals sat at during the first week shown, their baseline",
+                "one and a half times the number of cases",
+                "one and a half times the national average"],
       answer: 0,
-      why: "More days in a row means more evidence before it commits. In the Delta wave, going from 1 day to 10 drops the typical warning from 26 days to 12, but it stops jumping at noise.",
-      hint: "Which dial asks the signal to prove itself for longer?" },
+      why: "Each signal is divided by its own baseline, so 1.5 means half again above where it started. That is what lets a search count and a percentage of doctor visits be averaged into one alarm at all.",
+      hint: "The chart's left axis says 'times its starting level'. Starting when?" },
     { ask: "Doctor visits won on this data. Why might you still not trust it in a real outbreak?",
       options: ["insurance claims take days or weeks to reach anyone who could act",
                 "doctors are bad at spotting COVID",
@@ -617,6 +617,204 @@ function buildQuiz(containerId, setName) {
   syncChrome();
 }
 
+/* ---------- the game: call the outbreak ----------
+   The three early signals play in one day at a time and cases stay hidden, so the
+   student is deciding on exactly the information a health officer would have. Each
+   signal is drawn as a multiple of its own baseline, which is computed from the
+   first week only, so nothing about the future leaks into the chart. */
+var GAME_SIGS = ["searches", "survey", "doctor"];
+var ROUNDS = 5, IDEAL_LEAD = 14, MAX_ROUND_POINTS = 50;
+var game = { rounds: [], at: 0, score: 0, timer: null, day: 0, rows: [], surge: null,
+             called: null, series: null, live: false };
+
+function gameEligible() {
+  var out = [], waves = Object.keys(WAVES).slice(0, 3);
+  for (var code in STATE_NAMES) {
+    for (var w = 0; w < waves.length; w++) {
+      var rows = waveSlice(byState, code, waves[w]);
+      if (rows.length < 60) continue;
+      var sIdx = surgeIndex(column(rows, "cases"));
+      /* needs a real surge with room to call it, and at least two usable signals */
+      if (sIdx === null || sIdx < 25) continue;
+      var have = 0;
+      for (var g = 0; g < GAME_SIGS.length; g++) if (usable(rows, GAME_SIGS[g])) have++;
+      if (have < 2) continue;
+      out.push({ code: code, wave: waves[w] });
+    }
+  }
+  return out;
+}
+
+function baselineSeries(rows, key) {
+  var x = column(rows, key);
+  if (countValid(x) < MIN_DAYS) return null;
+  var first = [];
+  for (var i = 0; i < x.length && first.length < 7; i++) if (x[i] !== null) first.push(x[i]);
+  if (!first.length) return null;
+  var base = 0;
+  for (var j = 0; j < first.length; j++) base += first[j];
+  base /= first.length;
+  if (!(base > 0)) return null;
+  return x.map(function (v) { return v === null ? null : v / base; });
+}
+
+function startGame() {
+  var pool = gameEligible();
+  game.rounds = [];
+  for (var i = 0; i < ROUNDS && pool.length; i++) {
+    game.rounds.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  game.at = 0; game.score = 0;
+  el("g-score").textContent = "0";
+  el("g-start").hidden = true;
+  loadRound();
+}
+
+function loadRound() {
+  var r = game.rounds[game.at];
+  game.rows = waveSlice(byState, r.code, r.wave);
+  game.surge = surgeIndex(column(game.rows, "cases"));
+  game.called = null;
+  game.day = Math.min(14, game.rows.length - 1);   // open on the first fortnight
+  game.series = {};
+  GAME_SIGS.forEach(function (k) { game.series[k] = baselineSeries(game.rows, k); });
+  el("g-round").textContent = (game.at + 1) + " of " + game.rounds.length;
+  el("g-place").textContent = STATE_NAMES[r.code] + ", " + r.wave.split(",")[0];
+  el("g-result").innerHTML = "";
+  el("g-next").hidden = true;
+  el("g-alarm").hidden = false;
+  el("g-alarm").disabled = false;
+  el("g-alarm").textContent = "Sound the alarm";
+  game.live = true;
+  drawGame();
+  game.timer = setInterval(tickGame, REDUCED ? 140 : 55);
+}
+
+function tickGame() {
+  game.day += 1;
+  if (game.day >= game.rows.length - 1) { finishRound(null); return; }
+  drawGame();
+}
+
+function drawGame(reveal) {
+  var rows = game.rows, upto = reveal ? rows.length : game.day + 1;
+  var dates = rows.map(function (x) { return x.date; });
+  var traces = [];
+  GAME_SIGS.forEach(function (k) {
+    if (!game.series[k]) return;
+    traces.push({ x: dates.slice(0, upto), y: game.series[k].slice(0, upto),
+      name: LABEL[k], type: "scatter", mode: "lines",
+      line: { color: colorOf(k), width: 2 },
+      hovertemplate: LABEL[k] + ": %{y:.2f}x baseline<extra></extra>" });
+  });
+  var t = theme(), shapes = [], anns = [];
+  if (reveal) {
+    var cases = column(rows, "cases"), cmax = 0;
+    for (var i = 0; i < cases.length; i++) if (cases[i] > cmax) cmax = cases[i];
+    var top = 0;
+    GAME_SIGS.forEach(function (k) {
+      if (!game.series[k]) return;
+      for (var j = 0; j < game.series[k].length; j++) {
+        if (game.series[k][j] !== null && game.series[k][j] > top) top = game.series[k][j];
+      }
+    });
+    /* cases are only revealed at the end, scaled to sit under the signals as a backdrop */
+    traces.unshift({ x: dates, y: cases.map(function (v) { return v === null ? null : v / cmax * top; }),
+      name: "cases (shape only, not to scale)", type: "scatter", mode: "lines", fill: "tozeroy",
+      line: { color: colorOf("cases"), width: 1 },
+      fillcolor: "rgba(130,130,130,0.16)", hoverinfo: "skip" });
+    if (game.surge !== null) {
+      shapes.push({ type: "line", xref: "x", yref: "paper", x0: dates[game.surge],
+                    x1: dates[game.surge], y0: 0, y1: 1,
+                    line: { color: css("--text"), width: 2 } });
+      anns.push({ x: dates[game.surge], y: 1.05, xref: "x", yref: "paper", text: " surge",
+                  showarrow: false, xanchor: "left", bgcolor: css("--surface"),
+                  font: { size: 12, color: css("--text") } });
+    }
+  }
+  if (game.called !== null) {
+    shapes.push({ type: "line", xref: "x", yref: "paper", x0: dates[game.called],
+                  x1: dates[game.called], y0: 0, y1: 1,
+                  line: { color: "#c0392b", width: 2 } });
+    anns.push({ x: dates[game.called], y: 0.93, xref: "x", yref: "paper", text: "you called it ",
+                showarrow: false, xanchor: "right", bgcolor: css("--surface"),
+                font: { size: 12, color: "#c0392b" } });
+  }
+  Plotly.react("g-chart", traces, {
+    height: 380, margin: { l: 54, r: 18, t: 26, b: 44 },
+    font: t.font, paper_bgcolor: t.paper_bgcolor, plot_bgcolor: t.plot_bgcolor,
+    hovermode: reveal ? "x unified" : false, shapes: shapes, annotations: anns,
+    xaxis: { range: [dates[0], dates[dates.length - 1]], gridcolor: t.grid,
+             linecolor: t.rule, zeroline: false },
+    yaxis: { title: { text: "times its baseline" }, gridcolor: t.grid,
+             linecolor: t.rule, zeroline: false, rangemode: "tozero" },
+    legend: { orientation: "h", y: -0.17, font: { size: 12.5 } }
+  }, CONFIG);
+}
+
+function scoreCall(lead) {
+  if (lead === null || lead <= 0) return 0;
+  return Math.max(0, Math.round(MAX_ROUND_POINTS - Math.abs(lead - IDEAL_LEAD) * 2));
+}
+
+function finishRound(calledDay) {
+  clearInterval(game.timer); game.timer = null; game.live = false;
+  game.called = calledDay;
+  el("g-alarm").disabled = true;
+  drawGame(true);
+
+  var lead = (calledDay === null || game.surge === null) ? null : game.surge - calledDay;
+  var pts = scoreCall(lead);
+  game.score += pts;
+  el("g-score").textContent = String(game.score);
+
+  var msg, kind;
+  if (calledDay === null) {
+    msg = "You never called it. The wave came and went."; kind = "warn";
+  } else if (lead <= 0) {
+    msg = "Too late. The surge had already started " + plural(-lead, "day") + " earlier.";
+    kind = "warn";
+  } else if (pts >= 40) {
+    msg = "Called it " + plural(lead, "day") + " ahead. That is the sweet spot."; kind = "good";
+  } else if (lead > IDEAL_LEAD) {
+    msg = "Called it " + plural(lead, "day") + " ahead. Early, but that far out you were " +
+          "reading noise as much as a wave."; kind = "";
+  } else {
+    msg = "Called it " + plural(lead, "day") + " ahead. It counts, though a little more " +
+          "warning would have given people time to act."; kind = "";
+  }
+  note("g-result", msg + " <b>+" + pts + "</b>", kind);
+
+  if (game.at < game.rounds.length - 1) {
+    el("g-next").hidden = false;
+  } else {
+    var best = ROUNDS * MAX_ROUND_POINTS;
+    var title = game.score >= best * 0.8 ? "You read those waves like an epidemiologist."
+              : game.score >= best * 0.55 ? "Solid instincts. A couple of calls were off."
+              : game.score >= best * 0.3 ? "Getting there. Watch how the signals behave before they climb."
+              : "Tough round. Try again and watch the survey line in particular.";
+    el("g-result").insertAdjacentHTML("beforeend",
+      '<div class="note"><b>' + game.score + " out of " + best + ".</b> " + title + "</div>");
+    el("g-alarm").hidden = true;
+    el("g-start").hidden = false;
+    el("g-start").textContent = "Play again";
+  }
+}
+
+function wireGame() {
+  el("g-start").addEventListener("click", startGame);
+  el("g-alarm").addEventListener("click", function () {
+    if (game.live) finishRound(game.day);
+  });
+  el("g-next").addEventListener("click", function () { game.at += 1; loadRound(); });
+  Plotly.react("g-chart", [], { height: 380, margin: { l: 54, r: 18, t: 26, b: 44 },
+    font: theme().font, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    xaxis: { visible: false }, yaxis: { visible: false },
+    annotations: [{ x: 0.5, y: 0.5, xref: "paper", yref: "paper", showarrow: false,
+      text: "Press Start. Three signals, one day at a time.<br>Call the wave before it arrives.",
+      font: { size: 15, color: css("--text-faint") } }] }, CONFIG);
+}
+
 /* ---------- wiring ---------- */
 var nameToCode = {};
 function redrawAll() { drawA1(); drawA2(); drawA3(); drawA4(); }
@@ -653,6 +851,7 @@ function start(text) {
   buildQuiz("quiz-a1", "a1");
   buildQuiz("quiz-a2", "a2");
   buildQuiz("quiz-a4", "a4");
+  wireGame();
   buildA3Weeks();
   el("loading").hidden = true;
   el("main").hidden = false;
